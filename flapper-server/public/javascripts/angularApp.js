@@ -1,9 +1,12 @@
 var app = angular.module('flapperNews', ['ui.router']);
 
 app.controller('MainCtrl', [
+  'auth',
   '$scope',
   'posts',
-  function($scope, posts) {
+  function(auth, $scope, posts) {
+
+    $scope.isLoggedIn = auth.isLoggedIn
 
     $scope.posts = posts.posts;
 
@@ -26,10 +29,13 @@ app.controller('MainCtrl', [
 ])
 
 app.controller('PostsCtrl', [
+  'auth',
   '$scope',
   'posts',
   'post',
-  function($scope, posts, post) {
+  function(auth, $scope, posts, post) {
+
+    $scope.isLoggedIn = auth.isLoggedIn
 
     $scope.post = post
 
@@ -82,14 +88,14 @@ app.controller('AuthCtrl', [
 app.controller('NavCtrl', [
   '$scope',
   'auth',
-  function($scope, auth){
+  function($scope, auth) {
     $scope.isLoggedIn = auth.isLoggedIn;
     $scope.currentUser = auth.currentUser;
     $scope.logOut = auth.logOut;
   }
 ])
 
-app.factory('posts', ['$http', function($http) {
+app.factory('posts', ['$http', 'auth', function($http, auth) {
 
   var o = {
     posts: [],
@@ -99,12 +105,20 @@ app.factory('posts', ['$http', function($http) {
       })
     },
     create: function(post) {
-      return $http.post('/posts', post).success(function(data) {
+      return $http.post('/posts', post, {
+        headers: {
+          Authorization: 'Bearer ' + auth.getToken()
+        }
+      }).success(function(data) {
         o.posts.push(data)
       })
     },
     upvote: function(post) {
-      return $http.put('/posts/' + post._id + '/upvote')
+      return $http.put('/posts/' + post._id + '/upvote', null, {
+          headers: {
+            Authorization: 'Bearer ' + auth.getToken()
+          }
+        })
         .success(function(data) {
           post.upvotes += 1
         })
@@ -115,10 +129,18 @@ app.factory('posts', ['$http', function($http) {
       })
     },
     addComment: function(id, comment) {
-      return $http.post('/posts/' + id + '/comments', comment)
+      return $http.post('/posts/' + id + '/comments', comment, {
+        headers: {
+          Authorization: 'Bearer ' + auth.getToken()
+        }
+      })
     },
     upvoteComment: function(post, comment) {
-      return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
+      return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote', null, {
+          headers: {
+            Authorization: 'Bearer ' + auth.getToken()
+          }
+        })
         .success(function(data) {
           comment.upvotes += 1;
         })
@@ -133,20 +155,20 @@ app.factory('auth', ['$http', '$window', function($http, $window) {
 
   var auth = {
     saveToken: function(token) {
-      $window.localStorage('flapper-news-token') = token;
+      $window.localStorage['flapper-news-token'] = token;
     },
     getToken: function() {
-      return $window.localStorage('flapper-news-token')
+      return $window.localStorage['flapper-news-token']
     },
     isLoggedIn: function() {
       var token = auth.getToken();
-
+      console.log('Checking if logged in...')
       if (token) {
         var payload = JSON.parse($window.atob(token.split('.')[1]));
 
-        return payload.exp > Date.now / 1000
+        return payload.exp > Date.now() / 1000;
       } else {
-        return false
+        return false;
       }
     },
     currentUser: function() {
@@ -205,11 +227,11 @@ app.config([
         }
       })
       .state('login', {
-        url:'/login',
+        url: '/login',
         templateUrl: '/login.html',
         controller: 'AuthCtrl',
-        onEnter: ['$state', 'auth', function($state, auth){
-          if(auth.isLoggedIn()){
+        onEnter: ['$state', 'auth', function($state, auth) {
+          if (auth.isLoggedIn()) {
             $state.go('home')
           }
         }]
@@ -218,8 +240,8 @@ app.config([
         url: '/register',
         templateUrl: '/register.html',
         controller: 'AuthCtrl',
-        onEnter: ['$state', 'auth', function($state, auth){
-          if(auth.isLoggedIn()){
+        onEnter: ['$state', 'auth', function($state, auth) {
+          if (auth.isLoggedIn()) {
             $state.go('home')
           }
         }]
