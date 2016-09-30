@@ -79,6 +79,16 @@ app.controller('AuthCtrl', [
   }
 ])
 
+app.controller('NavCtrl', [
+  '$scope',
+  'auth',
+  function($scope, auth){
+    $scope.isLoggedIn = auth.isLoggedIn;
+    $scope.currentUser = auth.currentUser;
+    $scope.logOut = auth.logOut;
+  }
+])
+
 app.factory('posts', ['$http', function($http) {
 
   var o = {
@@ -147,17 +157,17 @@ app.factory('auth', ['$http', '$window', function($http, $window) {
         return payload.username;
       }
     },
-    auth.register: function(user) {
+    register: function(user) {
       return $http.post('/register', user).success(function(data) {
         auth.saveToken(data.token)
       })
     },
-    auth.logIn: function(user) {
+    logIn: function(user) {
       return $http.post('/login', user).success(function(data) {
         auth.saveToken(data.token)
       })
     },
-    auth.logOut: function() {
+    logOut: function() {
       $window.localStorage.removeItem('flapper-news-token')
     }
   };
@@ -193,6 +203,26 @@ app.config([
             return posts.get($stateParams.id)
           }]
         }
+      })
+      .state('login', {
+        url:'/login',
+        templateUrl: '/login.html',
+        controller: 'AuthCtrl',
+        onEnter: ['$state', 'auth', function($state, auth){
+          if(auth.isLoggedIn()){
+            $state.go('home')
+          }
+        }]
+      })
+      .state('register', {
+        url: '/register',
+        templateUrl: '/register.html',
+        controller: 'AuthCtrl',
+        onEnter: ['$state', 'auth', function($state, auth){
+          if(auth.isLoggedIn()){
+            $state.go('home')
+          }
+        }]
       })
     $urlRouterProvider.otherwise('home')
   }
