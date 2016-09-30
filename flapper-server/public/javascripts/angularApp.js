@@ -33,7 +33,7 @@ app.controller('PostsCtrl', [
 
     $scope.post = post
 
-    $scope.incrementUpvotes = function(comment){
+    $scope.incrementUpvotes = function(comment) {
       posts.upvoteComment(post, comment)
     }
 
@@ -41,15 +41,41 @@ app.controller('PostsCtrl', [
       if ($scope.body === '') {
         return
       }
-    posts.addComment(post._id, {
-      body: $scope.body,
-      author: 'user',
-    }).success(function(comment){
-      $scope.post.comments.push(comment)
-    });
+      posts.addComment(post._id, {
+        body: $scope.body,
+        author: 'user',
+      }).success(function(comment) {
+        $scope.post.comments.push(comment)
+      });
       $scope.body = ''
     }
 
+  }
+])
+
+app.controller('AuthCtrl', [
+  '$scope',
+  '$state',
+  'auth',
+  function($scope, $state, auth) {
+
+    $scope.user = {};
+
+    $scope.register = function() {
+      auth.register($scope.user).error(function(error) {
+        $scope.error = error
+      }).then(function() {
+        $state.go('home')
+      })
+    };
+
+    $scope.logIn = function() {
+      auth.logIn($scope.user).error(function(error) {
+        $scope.error = error
+      }).then(function() {
+        $state.go('home');
+      })
+    }
   }
 ])
 
@@ -67,23 +93,23 @@ app.factory('posts', ['$http', function($http) {
         o.posts.push(data)
       })
     },
-    upvote: function(post){
+    upvote: function(post) {
       return $http.put('/posts/' + post._id + '/upvote')
-        .success(function(data){
+        .success(function(data) {
           post.upvotes += 1
         })
     },
-    get: function(id){
-      return $http.get('/posts/' + id).then(function(res){
+    get: function(id) {
+      return $http.get('/posts/' + id).then(function(res) {
         return res.data
       })
     },
-    addComment: function(id, comment){
+    addComment: function(id, comment) {
       return $http.post('/posts/' + id + '/comments', comment)
     },
-    upvoteComment: function(post, comment){
+    upvoteComment: function(post, comment) {
       return $http.put('/posts/' + post._id + '/comments/' + comment._id + '/upvote')
-        .success(function(data){
+        .success(function(data) {
           comment.upvotes += 1;
         })
     }
@@ -93,51 +119,51 @@ app.factory('posts', ['$http', function($http) {
 
 }])
 
-app.factory('auth', ['$http', '$window', function($http, $window){
+app.factory('auth', ['$http', '$window', function($http, $window) {
 
-var auth = {
-  saveToken: function(token){
-    $window.localStorage('flapper-news-token') = token;
-  },
-  getToken: function(){
-    return $window.localStorage('flapper-news-token')
-  },
-  isLoggedIn: function(){
-    var token = auth.getToken();
-
-    if (token){
-      var payload = JSON.parse($window.atob(token.split('.')[1]));
-
-      return payload.exp > Date.now / 1000
-    } else {
-      return false
-    }
-  },
-  currentUser: function(){
-    if (auth.isLoggedIn()){
+  var auth = {
+    saveToken: function(token) {
+      $window.localStorage('flapper-news-token') = token;
+    },
+    getToken: function() {
+      return $window.localStorage('flapper-news-token')
+    },
+    isLoggedIn: function() {
       var token = auth.getToken();
-      var payload = JSON.parse($window.atob(token.split('.')[1]))
 
-      return payload.username;
+      if (token) {
+        var payload = JSON.parse($window.atob(token.split('.')[1]));
+
+        return payload.exp > Date.now / 1000
+      } else {
+        return false
+      }
+    },
+    currentUser: function() {
+      if (auth.isLoggedIn()) {
+        var token = auth.getToken();
+        var payload = JSON.parse($window.atob(token.split('.')[1]))
+
+        return payload.username;
+      }
+    },
+    auth.register: function(user) {
+      return $http.post('/register', user).success(function(data) {
+        auth.saveToken(data.token)
+      })
+    },
+    auth.logIn: function(user) {
+      return $http.post('/login', user).success(function(data) {
+        auth.saveToken(data.token)
+      })
+    },
+    auth.logOut: function() {
+      $window.localStorage.removeItem('flapper-news-token')
     }
-  },
-  auth.register: function(user){
-    return $http.post('/register', user).success(function(data){
-      auth.saveToken(data.token)
-    })
-  },
-  auth.logIn: function(user){
-    return $http.post('/login', user).success(function(data){
-      auth.saveToken(data.token)
-    })
-  },
-  auth.logOut: function(){
-    $window.localStorage.removeItem('flapper-news-token')
-  }
-};
+  };
 
 
-return auth;
+  return auth;
 
 }])
 
@@ -163,7 +189,7 @@ app.config([
         templateUrl: '/posts.html',
         controller: 'PostsCtrl',
         resolve: {
-          post: ['$stateParams', 'posts', function($stateParams, posts){
+          post: ['$stateParams', 'posts', function($stateParams, posts) {
             return posts.get($stateParams.id)
           }]
         }
